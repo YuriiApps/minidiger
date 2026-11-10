@@ -264,16 +264,19 @@
     if (hasTg) { try { tg.BackButton.hide(); } catch (e) {} }
   }
 
-  function askAbout(id) {
+  // Результат показуємо під карткою тієї моделі, на яку натиснули. Попередні повідомлення прибираємо.
+  function askAbout(id, btn) {
     const m = MODELS.find((x) => x.id === id);
-    const target = document.getElementById("ask-result") || document.getElementById("catalog-list");
+    document.querySelectorAll(".ask-note").forEach((n) => n.remove());
+    const card = (btn && btn.closest(".card")) || document.getElementById("model-detail");
     const sent = sendToBot({ type: "question", model: m.name });
     const box = document.createElement("div");
-    box.className = sent ? "msg ok" : "msg info";
+    box.className = "msg ask-note " + (sent ? "ok" : "info");
     box.textContent = sent
-      ? `Запит щодо «${m.name}» передано менеджеру.`
+      ? `Запит щодо «${m.name}» передано менеджеру. Підтвердження прийде в чат із бота.`
       : `Запит щодо «${m.name}» не надіслано: відкрийте застосунок кнопкою «🛒 Каталог і звернення» в боті.`;
-    target.prepend(box);
+    card.appendChild(box);
+    box.scrollIntoView({ behavior: "smooth", block: "center" });
     haptic("success");
   }
 
@@ -281,7 +284,7 @@
     const open = e.target.closest("[data-open]");
     const ask = e.target.closest("[data-ask]");
     if (open) openModel(open.dataset.open);
-    if (ask) askAbout(ask.dataset.ask);
+    if (ask) askAbout(ask.dataset.ask, ask);
   });
 
   // ---------- Гарантійне звернення ----------
