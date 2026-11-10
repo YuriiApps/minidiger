@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Minidiger — демо Mini App</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --bg: var(--tg-theme-bg-color, #ffffff);
+    --text: var(--tg-theme-text-color, #1f2328);
+    --hint: var(--tg-theme-hint-color, #6b7280);
+    --link: var(--tg-theme-link-color, #2563eb);
+    --btn: var(--tg-theme-button-color, #2563eb);
+    --btn-text: var(--tg-theme-button-text-color, #ffffff);
+    --card: var(--tg-theme-secondary-bg-color, #f3f4f6);
+    --danger: #b42318;
+    --ok: #067647;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+  header { padding: 16px 16px 8px; }
+  h1 { font-size: 20px; margin: 0; }
+  .sub { color: var(--hint); font-size: 13px; margin-top: 2px; }
+  .demo-badge { display: inline-block; background: #fff4d6; color: #7a4d00; font-size: 12px;
+    padding: 3px 8px; border-radius: 999px; margin-top: 8px; }
+  main { padding: 8px 16px 16px; }
+  .card { background: var(--card); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+  .card h2 { font-size: 17px; margin: 0 0 4px; }
+  .card p { margin: 0 0 10px; color: var(--hint); font-size: 14px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  button, .btn { appearance: none; border: 0; border-radius: 10px; padding: 10px 14px;
+    background: var(--btn); color: var(--btn-text); font-size: 15px; cursor: pointer; }
+  button.secondary { background: transparent; color: var(--link); border: 1px solid var(--link); }
+  button:disabled { opacity: .5; cursor: default; }
+  nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; display: flex;
+    background: var(--bg); border-top: 1px solid var(--card);
+    padding-bottom: env(safe-area-inset-bottom); }
+  nav.tabs button { flex: 1; border-radius: 0; background: transparent; color: var(--hint);
+    padding: 12px 4px; font-size: 13px; }
+  nav.tabs button.active { color: var(--btn); font-weight: 600; }
+  label { display: block; font-size: 14px; margin: 12px 0 4px; }
+  input[type=text], textarea, select { width: 100%; font: inherit; color: var(--text);
+    background: var(--bg); border: 1px solid #d0d5dd; border-radius: 10px; padding: 10px 12px; }
+  textarea { min-height: 96px; resize: vertical; }
+  .hint { color: var(--hint); font-size: 13px; margin-top: 4px; }
+  .msg { font-size: 14px; margin-top: 10px; padding: 10px 12px; border-radius: 10px; }
+  .msg.ok { background: #ecfdf3; color: var(--ok); }
+  .msg.err { background: #fef3f2; color: var(--danger); }
+  .msg.info { background: #eff8ff; color: #175cd3; }
+  .status { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 999px;
+    background: #eaecf0; color: #344054; }
+  .empty { color: var(--hint); text-align: center; padding: 24px 8px; }
+  .hidden { display: none !important; }
+  img.photo { display: block; width: 100%; max-height: 220px; object-fit: contain; background: #ffffff;
+    border-radius: 10px; margin: 0 0 10px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Minidiger</h1>
+  <div class="sub">Міні-техніка, Вінниця · гарантія 1 рік</div>
+  <span class="demo-badge">ДЕМО: дані вигадані, звернення не надсилаються на сервер</span>
+</header>
+
+<main>
+
+  <!-- КАТАЛОГ -->
+  <section id="tab-catalog">
+    <div id="catalog-list"></div>
+    <div id="model-detail" class="hidden"></div>
+  </section>
+
+  <!-- ГАРАНТІЯ -->
+  <section id="tab-warranty" class="hidden">
+    <div class="card">
+      <h2>Гарантійне звернення</h2>
+      <p>Заповніть форму. Менеджер зв'яжеться з вами і повідомить, що далі.</p>
+      <form id="warranty-form" novalidate>
+        <label for="w-serial">Серійний номер (на шильдику техніки)</label>
+        <input id="w-serial" type="text" placeholder="наприклад MD3-0001" autocomplete="off">
+        <div class="hint">Демо-номери: MD3-0001, MARS400-0003, MD4-0002</div>
+        <div id="w-serial-check"></div>
+
+        <label for="w-model">Модель</label>
+        <select id="w-model">
+          <option value="">Оберіть модель</option>
+        </select>
+
+        <label for="w-desc">Що сталося</label>
+        <textarea id="w-desc" placeholder="Опишіть проблему своїми словами"></textarea>
+        <div class="hint" id="w-desc-count">Мінімум 10 символів</div>
+
+        <label for="w-photo">Фото або відео (необов'язково)</label>
+        <input id="w-photo" type="file" accept="image/*,video/*" multiple>
+        <div class="hint" id="w-photo-info">Файли не завантажуються в цьому демо</div>
+
+        <label for="w-phone">Телефон для зв'язку</label>
+        <input id="w-phone" type="text" placeholder="+380" inputmode="tel" autocomplete="tel">
+
+        <div class="row" style="margin-top:14px">
+          <button id="w-submit" type="submit">Надіслати звернення</button>
+        </div>
+        <div id="w-result"></div>
+      </form>
+    </div>
+  </section>
+
+  <!-- МОЇ ЗВЕРНЕННЯ -->
+  <section id="tab-mine" class="hidden">
+    <div id="mine-list"></div>
+  </section>
+
+</main>
+
+<nav class="tabs">
+  <button data-tab="catalog" class="active">Техніка</button>
+  <button data-tab="warranty">Гарантія</button>
+  <button data-tab="mine">Мої звернення</button>
+</nav>
+
+<script>
+(() => {
+  "use strict";
+
+  // ---------- ДЕМО-ДАНІ (вигадані; описи моделей — з сайту, без технічних цифр) ----------
+  const MODELS = [
+    { id: "md1",  name: "МД-1",          type: "Гусеничний міні-екскаватор", about: "Полупрофесійний екскаватор з великими можливостями." },
+    { id: "md3",  name: "МД-3",          type: "Гусеничний міні-екскаватор", about: "Один із перших гусеничних міні-екскаваторів виробництва України." },
+    { id: "md4",  name: "МД-4",          type: "Гусеничний міні-екскаватор", about: "Модель з найширшими можливостями в лінійці гусеничних екскаваторів." },
+    { id: "m200", name: "Марс-200",      type: "Міні-погрузчик",             about: "Найдоступніший міні-погрузчик у лінійці." },
+    { id: "m400", name: "Марс-400",      type: "Міні-погрузчик",             about: "Універсальна машина для різних будівельних робіт." },
+    { id: "m400h",name: "Марс-400 HL",   type: "Міні-погрузчик",             about: "Погрузчик із розширеними можливостями." },
+    { id: "et1",  name: "ЕТ-1",          type: "Навісний екскаватор",        about: "Установка на трактори та міні-трактори." },
+    { id: "et2",  name: "ЕТ-2",          type: "Навісний екскаватор",        about: "Навісний екскаватор для міні-тракторів." },
+    { id: "grif", name: "Гриф",          type: "Навісний екскаватор",        about: "Навісний екскаватор для міні-тракторів." }
+  ];
+
+  // Фото з сайту minidiger.com.ua (завантажені в img/). Для ЕТ-2, Марс-400 HL фото спільні з сусідніми моделями, це треба перевірити.
+  const PHOTO = {
+    md1:   "img/md1.png",
+    md3:   "img/md3.png",
+    md4:   "img/md4.png",
+    m200:  "img/m200.png",
+    m400:  "img/m400.png",
+    m400h: "img/m400.png",
+    et1:   "img/et1.png",
+    et2:   "img/et1.png",
+    grif:  "img/grif.png"
+  };
+
+  // Демо-реєстр техніки (вигадано для тесту)
+  const REGISTRY = {
+    "MD3-0001":     { model: "МД-3",       warrantyUntil: "2027-03-15" },
+    "MD4-0002":     { model: "МД-4",       warrantyUntil: "2026-06-01" },
+    "MARS400-0003": { model: "Марс-400",   warrantyUntil: "2027-08-20" }
+  };
+
+  const STORE_KEY = "minidiger_demo_tickets";
+
+  // ---------- Telegram WebApp (з перевіркою наявності, щоб працювало і в браузері) ----------
+  const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+  const hasTg = !!tg;
+  if (hasTg) {
+    try { tg.ready(); tg.expand(); } catch (e) { /* старі версії клієнта */ }
+  }
+  const haptic = (type) => {
+    try { if (hasTg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred(type); } catch (e) {}
+  };
+
+  // ---------- Безпечне сховище (лише демо-дані, без персональних даних) ----------
+  // Запасна копія в пам'яті сторінки: працює, коли localStorage заблокований (приватний режим, file://)
+  let memoryTickets = [];
+  const loadTickets = () => {
+    try {
+      const raw = localStorage.getItem(STORE_KEY);
+      if (raw !== null) return JSON.parse(raw);
+    } catch (e) { /* немає доступу до сховища */ }
+    return memoryTickets;
+  };
+  const saveTickets = (list) => {
+    memoryTickets = list;
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(list)); } catch (e) { /* немає доступу до сховища */ }
+  };
+
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  // ---------- Вкладки ----------
+  const tabs = document.querySelectorAll("nav.tabs button");
+  function showTab(name) {
+    tabs.forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
+    ["catalog", "warranty", "mine"].forEach((t) =>
+      document.getElementById("tab-" + t).classList.toggle("hidden", t !== name));
+    if (name === "mine") renderMine();
+    if (hasTg) {
+      try { name === "warranty" ? tg.MainButton.show() : tg.MainButton.hide(); } catch (e) {}
+    }
+  }
+  tabs.forEach((b) => b.addEventListener("click", () => { showTab(b.dataset.tab); haptic("light"); }));
+
+  // ---------- Каталог ----------
+  function renderCatalog() {
+    const list = document.getElementById("catalog-list");
+    list.innerHTML = MODELS.map((m) => `
+      <div class="card">
+        ${PHOTO[m.id] ? `<img class="photo" src="${esc(PHOTO[m.id])}" alt="${esc(m.name)}" loading="lazy">` : ""}
+        <h2>${esc(m.name)}</h2>
+        <p>${esc(m.type)}. ${esc(m.about)}</p>
+        <div class="row">
+          <button class="secondary" data-open="${esc(m.id)}">Детальніше</button>
+          <button data-ask="${esc(m.id)}">Запитати про цю модель</button>
+        </div>
+      </div>`).join("");
+  }
+
+  function openModel(id) {
+    const m = MODELS.find((x) => x.id === id);
+    if (!m) return;
+    document.getElementById("catalog-list").classList.add("hidden");
+    const d = document.getElementById("model-detail");
+    d.classList.remove("hidden");
+    d.innerHTML = `
+      <div class="card">
+        ${PHOTO[m.id] ? `<img class="photo" src="${esc(PHOTO[m.id])}" alt="${esc(m.name)}">` : ""}
+        <h2>${esc(m.name)}</h2>
+        <p>${esc(m.type)}</p>
+        <p style="color:var(--text)">${esc(m.about)}</p>
+        <p>Точні характеристики та ціну уточнює менеджер. Гарантія 1 рік для першого власника.</p>
+        <div class="row">
+          <button data-ask="${esc(m.id)}">Запитати про цю модель</button>
+          <button class="secondary" id="back-catalog">Назад до каталогу</button>
+        </div>
+        <div id="ask-result"></div>
+      </div>`;
+    if (hasTg) {
+      try {
+        tg.BackButton.show();
+        tg.BackButton.onClick(closeModel);
+      } catch (e) {}
+    }
+    document.getElementById("back-catalog").addEventListener("click", closeModel);
+  }
+
+  function closeModel() {
+    document.getElementById("model-detail").classList.add("hidden");
+    document.getElementById("catalog-list").classList.remove("hidden");
+    if (hasTg) { try { tg.BackButton.hide(); } catch (e) {} }
+  }
+
+  function askAbout(id) {
+    const m = MODELS.find((x) => x.id === id);
+    const target = document.getElementById("ask-result") || document.getElementById("catalog-list");
+    // Демо: лише показуємо, що запит прийнято локально. Нічого не відправляється.
+    const box = document.createElement("div");
+    box.className = "msg info";
+    box.textContent = `Демо: запит щодо «${m.name}» було б передано менеджеру. У цій версії нічого не надсилається.`;
+    target.prepend(box);
+    haptic("success");
+  }
+
+  document.getElementById("tab-catalog").addEventListener("click", (e) => {
+    const open = e.target.closest("[data-open]");
+    const ask = e.target.closest("[data-ask]");
+    if (open) openModel(open.dataset.open);
+    if (ask) askAbout(ask.dataset.ask);
+  });
+
+  // ---------- Гарантійне звернення ----------
+  const serialInput = document.getElementById("w-serial");
+  const modelSelect = document.getElementById("w-model");
+  const descInput = document.getElementById("w-desc");
+  const descCount = document.getElementById("w-desc-count");
+  const phoneInput = document.getElementById("w-phone");
+  const photoInput = document.getElementById("w-photo");
+  const serialCheck = document.getElementById("w-serial-check");
+  const resultBox = document.getElementById("w-result");
+
+  MODELS.forEach((m) => {
+    const o = document.createElement("option");
+    o.value = m.name; o.textContent = m.name;
+    modelSelect.appendChild(o);
+  });
+
+  function normSerial(s) { return s.trim().toUpperCase().replace(/\s+/g, ""); }
+
+  function checkSerial() {
+    const s = normSerial(serialInput.value);
+    serialCheck.innerHTML = "";
+    if (!s) return null;
+    const unit = REGISTRY[s];
+    if (!unit) {
+      serialCheck.innerHTML = `<div class="msg info">Номера немає в реєстрі. Менеджер перевірить його вручну.</div>`;
+      return null;
+    }
+    const expired = new Date(unit.warrantyUntil) < new Date();
+    modelSelect.value = unit.model;
+    serialCheck.innerHTML = expired
+      ? `<div class="msg err">Знайдено: ${esc(unit.model)}. Гарантія завершилась ${esc(unit.warrantyUntil)}.</div>`
+      : `<div class="msg ok">Знайдено: ${esc(unit.model)}. Гарантія діє до ${esc(unit.warrantyUntil)}.</div>`;
+    return unit;
+  }
+
+  serialInput.addEventListener("change", checkSerial);
+  descInput.addEventListener("input", () => {
+    const n = descInput.value.trim().length;
+    descCount.textContent = n >= 10 ? "Дякуємо, опис достатній" : "Мінімум 10 символів";
+  });
+  photoInput.addEventListener("change", () => {
+    const n = photoInput.files.length;
+    document.getElementById("w-photo-info").textContent =
+      n ? `Вибрано файлів: ${n}. У цьому демо вони не завантажуються` : "Файли не завантажуються в цьому демо";
+  });
+
+  function validate() {
+    const errors = [];
+    if (!normSerial(serialInput.value)) errors.push("Вкажіть серійний номер");
+    if (!modelSelect.value) errors.push("Оберіть модель");
+    if (descInput.value.trim().length < 10) errors.push("Опишіть проблему (мінімум 10 символів)");
+    const phone = phoneInput.value.replace(/\D/g, "");
+    if (phone.length < 10) errors.push("Вкажіть номер телефону для зв'язку");
+    return errors;
+  }
+
+  function submitTicket() {
+    const errors = validate();
+    if (errors.length) {
+      resultBox.innerHTML = `<div class="msg err">${errors.map(esc).join("<br>")}</div>`;
+      haptic("error");
+      return;
+    }
+    const unit = checkSerial();
+    const list = loadTickets();
+    const id = (list.reduce((max, t) => Math.max(max, t.id), 0) || 100) + 1;
+    const ticket = {
+      id,
+      serial: normSerial(serialInput.value),
+      model: modelSelect.value,
+      desc: descInput.value.trim(),
+      phone: phoneInput.value.trim(),
+      verified: unit ? "так" : "ні",
+      status: "Нове",
+      comment: "",
+      created: new Date().toLocaleString("uk-UA")
+    };
+    list.push(ticket);
+    saveTickets(list);
+
+    resultBox.innerHTML = `
+      <div class="msg ok">
+        Звернення №${id} прийнято (демо). Статус видно у вкладці «Мої звернення».<br>
+        Терміни ремонту менеджер повідомить сам.
+      </div>`;
+    haptic("success");
+    document.getElementById("warranty-form").reset();
+    descCount.textContent = "Мінімум 10 символів";
+    document.getElementById("w-photo-info").textContent = "Файли не завантажуються в цьому демо";
+    serialCheck.innerHTML = "";
+    if (hasTg) { try { tg.showPopup({ title: "Звернення прийнято", message: `№${id} (демо)`, buttons: [{ type: "ok" }] }); } catch (e) {} }
+  }
+
+  document.getElementById("warranty-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    submitTicket();
+  });
+
+  // Головна кнопка Telegram замість власної кнопки, якщо доступна
+  if (hasTg) {
+    try {
+      tg.MainButton.setText("Надіслати звернення (демо)");
+      tg.MainButton.onClick(submitTicket);
+    } catch (e) {}
+  }
+
+  // ---------- Мої звернення ----------
+  function renderMine() {
+    const box = document.getElementById("mine-list");
+    const list = loadTickets().slice().reverse();
+    if (!list.length) {
+      box.innerHTML = `<div class="empty">Звернень ще немає. Оформіть перше у вкладці «Гарантія».</div>`;
+      return;
+    }
+    box.innerHTML = list.map((t) => `
+      <div class="card">
+        <h2>Звернення №${t.id} <span class="status">${esc(t.status)}</span></h2>
+        <p>${esc(t.model)} · серійний ${esc(t.serial)} · ${esc(t.created)}</p>
+        <p style="color:var(--text)">${esc(t.desc)}</p>
+        ${t.comment ? `<p>Коментар менеджера: ${esc(t.comment)}</p>` : ""}
+      </div>`).join("");
+  }
+
+  // ---------- Старт ----------
+  renderCatalog();
+  showTab("catalog");
+})();
+</script>
+</body>
+</html>
