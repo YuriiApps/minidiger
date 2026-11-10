@@ -171,6 +171,19 @@
     try { if (hasTg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred(type); } catch (e) {}
   };
 
+  // ---------- Надсилання боту ----------
+  // sendData працює лише коли застосунок відкрито кнопкою з клавіатури бота.
+  // Тоді Telegram передає дані боту, а застосунок закривається. В іншому разі повертаємо false.
+  function sendToBot(payload) {
+    if (!hasTg || typeof tg.sendData !== "function") return false;
+    try {
+      tg.sendData(JSON.stringify(payload));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   // ---------- Безпечне сховище (лише демо-дані, без персональних даних) ----------
   // Запасна копія в пам'яті сторінки: працює, коли localStorage заблокований (приватний режим, file://)
   let memoryTickets = [];
@@ -254,10 +267,12 @@
   function askAbout(id) {
     const m = MODELS.find((x) => x.id === id);
     const target = document.getElementById("ask-result") || document.getElementById("catalog-list");
-    // Демо: лише показуємо, що запит прийнято локально. Нічого не відправляється.
+    const sent = sendToBot({ type: "question", model: m.name });
     const box = document.createElement("div");
-    box.className = "msg info";
-    box.textContent = `Демо: запит щодо «${m.name}» було б передано менеджеру. У цій версії нічого не надсилається.`;
+    box.className = sent ? "msg ok" : "msg info";
+    box.textContent = sent
+      ? `Запит щодо «${m.name}» передано менеджеру.`
+      : `Запит щодо «${m.name}» не надіслано: відкрийте застосунок кнопкою «🛒 Каталог і звернення» в боті.`;
     target.prepend(box);
     haptic("success");
   }
@@ -349,11 +364,20 @@
     list.push(ticket);
     saveTickets(list);
 
-    resultBox.innerHTML = `
-      <div class="msg ok">
-        Звернення №${id} прийнято (демо). Статус видно у вкладці «Мої звернення».<br>
-        Терміни ремонту менеджер повідомить сам.
-      </div>`;
+    const sent = sendToBot({
+      type: "warranty",
+      serial: ticket.serial,
+      model: ticket.model,
+      desc: ticket.desc,
+      phone: ticket.phone
+    });
+    resultBox.innerHTML = sent
+      ? `<div class="msg ok">Звернення передано менеджеру. Застосунок закриється, а бот напише вам підтвердження.</div>`
+      : `<div class="msg info">
+          Звернення збережено лише в цьому застосунку. Щоб воно потрапило менеджеру, відкрийте застосунок
+          кнопкою «🛒 Каталог і звернення» в боті.<br>
+          Номер №${id}. Терміни ремонту менеджер повідомить сам.
+        </div>`;
     haptic("success");
     document.getElementById("warranty-form").reset();
     descCount.textContent = "Мінімум 10 символів";
